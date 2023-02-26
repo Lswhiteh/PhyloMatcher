@@ -12,16 +12,14 @@ Resources:
 Logan Whitehouse - lswhiteh@unc.edu
 """
 import argparse
-import multiprocessing as mp
 
+from tqdm import tqdm
 from Bio import Entrez
 
 
 def get_ua():
     ap = argparse.ArgumentParser()
-    ap.add_argument(
-        "-e", "--email", dest="email", required=True
-    )
+    ap.add_argument("-e", "--email", dest="email", required=True)
     ap.add_argument(
         "-c",
         "--csv",
@@ -33,19 +31,34 @@ def get_ua():
     return ap.parse_args()
 
 
-def get_tax_id(species):
-    """Searches Entrez Taxonomy and grabs the official ID"""
-    e_handle = Entrez.esearch(db="taxonomy", term=species, rettype="gb")
+def run_esearch(sp):
+    e_handle = Entrez.esearch(db="taxonomy", term=sp, rettype="gb")
     record = Entrez.read(e_handle)["IdList"]
     e_handle.close()
-
     return record[0]
 
 
-def get_tax_info(tax_id):
-    search = Entrez.efetch(id=tax_id, db="taxonomy")
-    taxinfo = Entrez.read(search)
-    return taxinfo[0]
+def get_tax_id(species):
+    """Searches Entrez Taxonomy and grabs the official ID"""
+    try:
+        sp_id = run_esearch(species)
+        return sp_id
+    except:
+        if species[-2:] == "um":
+            species = "us".join(species.rsplit("um", 1))
+        elif species[-2:] == "us":
+            species = "um".join(species.rsplit("us", 1))
+        try:
+            sp_id = run_esearch(species)
+            return sp_id
+        except:
+            raise Exception
+
+
+def get_tax_info(tax_ids):
+    fetch = Entrez.efetch(id=tax_ids, db="taxonomy")
+    taxinfo = Entrez.read(fetch)
+    return taxinfo
 
 
 def get_other_names(tax_dict):
@@ -60,54 +73,57 @@ def get_other_names(tax_dict):
 def read_csv(csvfile):
     sp_list = []
     target_list = []
+    idx_list = []
     with open(csvfile, "r") as ifile:
-        for line in ifile.readlines():
+        for idx, line in enumerate(ifile.readlines()):
             if "Tree_Sp_Name" in line:
                 continue
             else:
-                sp_list.extend([i for i in line.strip().split(",")[:-1] if i])
+                _line = [i for i in line.strip().split(",")[:-1] if i]
+                sp_list.extend(_line)
                 target_list.append(line.strip().split(",")[0])
+                idx_list.extend([idx] * len(_line))
 
-    return sp_list, target_list
-
-
-def worker(sp_str):
-    try:
-        tax_id = get_tax_id(sp_str)
-        tax_info = get_tax_info(tax_id)
-        namelist = get_other_names(tax_info)
-        if sp_str in namelist:
-            namelist.remove(sp_str)
-
-        namelist = [i.replace(" ", "_") for i in namelist]
-        namelist.append(sp_str.replace(" ", "_"))
-
-        return sorted(namelist)
-
-    except Exception as e:
-        return ("Failed", sp_str)
+    return sp_list, target_list, idx_list
 
 
 def main():
     ua = get_ua()
     Entrez.email = ua.email
 
-    sp_list, target_list = read_csv(ua.input_csv)
+    sp_list, target_list, idx_list = read_csv(ua.input_csv)
     cleaned_sp_list = [i.replace("_", " ") for i in sp_list]
 
-    print("[INFO] Searching NCBI")
-    pool = mp.Pool(8)
-    work_res = pool.imap(worker, cleaned_sp_list, chunksize=4)
-    pool.close()
-
-    fail_list = []
     name_res = []
+    pass_list = []
+    fail_list = []
+    tax_ids = []
+    for idx, sp_str in tqdm(
+        enumerate(cleaned_sp_list), "[INFO] Fetching IDs", total=len(cleaned_sp_list)
+    ):
+        try:
+            tax_ids.append(get_tax_id(sp_str))
+            pass_list.append(sp_str)
+        except Exception as e:
+            fail_list.append(target_list[idx_list[idx]])
 
-    for res in work_res:
-        if isinstance(res, tuple):
-            fail_list.append(res[-1])
-        else:
-            name_res.append(res)
+    # Filter out redundant hits
+
+    unique_tax_ids = set(tax_ids)
+    pass_list = [pass_list[i] for i in [tax_ids.index(j) for j in unique_tax_ids]]
+
+    tax_info = get_tax_info(unique_tax_ids)
+
+    for name, ti in tqdm(
+        zip(pass_list, tax_info), "[INFO] Parsing XML data", total=len(pass_list)
+    ):
+        namelist = get_other_names(ti)
+        if name in namelist:
+            namelist.remove(name)
+
+        namelist = [i.replace(" ", "_") for i in namelist]
+        namelist.append(name.replace(" ", "_"))
+        name_res.append(namelist)
 
     # Remove redundant lists to allow for checking all csv entries
     name_res = set([tuple(i) for i in name_res])
@@ -128,7 +144,7 @@ def main():
             ofile.write("\t".join(names) + "\n")
 
     with open("output/multi_taxomatcher_fails.tsv", "w") as failfile:
-        for i in fail_list:
+        for i in set(fail_list):
             failfile.write(i.replace(" ", "_") + "\n")
 
     print("[INFO] Done")

@@ -18,9 +18,7 @@ from Bio import Entrez
 
 def get_ua():
     ap = argparse.ArgumentParser()
-    ap.add_argument(
-        "-e", "--email", dest="email", required=True
-    )
+    ap.add_argument("-e", "--email", dest="email", required=True)
     ap.add_argument(
         "-s",
         "--species",
@@ -47,7 +45,9 @@ def get_tax_info(tax_id):
 
 
 def get_other_names(tax_dict):
+    print(tax_dict)
     synonyms = tax_dict["OtherNames"]["Synonym"]
+    synonyms.append(tax_dict["ScientificName"])
     for name in tax_dict["OtherNames"]["Name"]:
         if name["ClassCDE"] == "authority":
             synonyms.append(" ".join(name["DispName"].split()[:2]))
