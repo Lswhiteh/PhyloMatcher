@@ -23,6 +23,8 @@ Gonyosoma_prasinus
 ### NCBI
 Due to the specificity of Entrez results and the relative sparseness of taxonomy data a CSV intended for NCBI matching can have multiple columns, assuming the first column is the target species and the remaining columns are prior-known synonyms. All names will be flattened and searched to increase the chances of matches in the database. A single-column CSV file will also work, identically to the GBIF format.
 
+Note: currently the multi-Entrez script assumes the final column in the CSV is for notes. If people decide this is worth fixing I will, but it seems like the GBIF approach is much better across the board.
+
 E.g.
 ```
 Sphenodon_punctatus,Hatteria_punctata
