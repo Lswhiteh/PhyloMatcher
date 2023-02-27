@@ -1,5 +1,5 @@
 # Taxomatcher
-Python module to query the NCBI Taxonomy database for synonym names of target species.
+Python modules to query the GFIB or NCBI Taxonomy databases for synonym names of target species.
 
 ## Installation
 Required packages:
