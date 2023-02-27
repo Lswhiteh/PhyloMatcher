@@ -63,8 +63,6 @@ def worker(sp):
     if key:
         synonyms = get_synonyms(key)
         synonyms.insert(0, sp)
-        if sp != curr_name:
-            synonyms.append(curr_name)
         synonyms.append(curr_name)
     else:
         synonyms = [sp]
