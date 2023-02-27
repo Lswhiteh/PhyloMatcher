@@ -10,9 +10,23 @@ To use conda:
 
 ## Usage
 Single lookup:
-`python taxomatcher/single_entrez_matcher.py -e <email@email.com> -s <Species_Name>`
+```$ python taxomatcher/single_entrez_matcher.py -h
+usage: single_entrez_matcher.py [-h] -e EMAIL [-s SPECIES_NAME]
+
+options:
+  -h, --help            show this help message and exit
+  -e EMAIL, --email EMAIL
+  -s SPECIES_NAME, --species SPECIES_NAME
+```
 
 CSV lookup:
-`python taxomatcher/multi_entrez_matcher.py -e <email@email.com> -c data/taxolist.csv`
+```$ python taxomatcher/multi_entrez_matcher.py -h
+usage: multi_entrez_matcher.py [-h] -e EMAIL -c INPUT_CSV
 
-Currently missing a lot of hits on the multi-matcher. Work in progress.
+options:
+  -h, --help            show this help message and exit
+  -e EMAIL, --email EMAIL
+  -c INPUT_CSV, --csv INPUT_CSV
+                        CSV where first column is a list of target species names to look up. Will check other columns too. Ignores final column,
+                        assumes is notes.
+```
