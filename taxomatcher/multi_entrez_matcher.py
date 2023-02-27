@@ -32,10 +32,13 @@ def get_ua():
 
 
 def run_esearch(sp):
-    e_handle = Entrez.esearch(db="taxonomy", term=sp, rettype="gb")
-    record = Entrez.read(e_handle)["IdList"]
-    e_handle.close()
-    return record[0]
+    try:
+        e_handle = Entrez.esearch(db="taxonomy", term=sp, rettype="gb")
+        record = Entrez.read(e_handle)["IdList"]
+        e_handle.close()
+        return record[0]
+    except:
+        raise Exception
 
 
 def get_tax_id(species):
@@ -44,15 +47,20 @@ def get_tax_id(species):
         sp_id = run_esearch(species)
         return sp_id
     except:
+        # Check for misspellings
         if species[-2:] == "um":
             species = "us".join(species.rsplit("um", 1))
         elif species[-2:] == "us":
             species = "um".join(species.rsplit("us", 1))
+        elif species[-2:] == "ea":
+            species = "eus".join(species.rsplit("ea", 1))
+        elif species[-2:] == "eus":
+            species = "ea".join(species.rsplit("eus", 1))
         try:
             sp_id = run_esearch(species)
             return sp_id
         except:
-            raise Exception
+            return None
 
 
 def get_tax_info(tax_ids):
@@ -62,10 +70,15 @@ def get_tax_info(tax_ids):
 
 
 def get_other_names(tax_dict):
-    synonyms = tax_dict["OtherNames"]["Synonym"]
-    for name in tax_dict["OtherNames"]["Name"]:
-        if name["ClassCDE"] == "authority":
-            synonyms.append(" ".join(name["DispName"].split()[:2]))
+    synonyms = []
+    if "OtherNames" in tax_dict:
+        if "Synonym" in tax_dict["OtherNames"]:
+            synonyms.extend(tax_dict["OtherNames"]["Synonym"])
+
+        if "Name" in tax_dict["OtherNames"]:
+            for name in tax_dict["OtherNames"]["Name"]:
+                if name["ClassCDE"] == "authority":
+                    synonyms.append(" ".join(name["DispName"].split()[:2]))
 
     return list(set(synonyms))
 
@@ -75,7 +88,7 @@ def read_csv(csvfile):
     target_list = []
     idx_list = []
     with open(csvfile, "r") as ifile:
-        for idx, line in enumerate(ifile.readlines()):
+        for idx, line in enumerate(ifile.readlines(), start=-1):
             if "Tree_Sp_Name" in line:
                 continue
             else:
@@ -102,9 +115,14 @@ def main():
         enumerate(cleaned_sp_list), "[INFO] Fetching IDs", total=len(cleaned_sp_list)
     ):
         try:
-            tax_ids.append(get_tax_id(sp_str))
-            pass_list.append(sp_str)
-        except Exception as e:
+            tax_id = get_tax_id(sp_str)
+            if tax_id:
+                tax_ids.append(get_tax_id(sp_str))
+                pass_list.append(sp_str)
+            else:
+                fail_list.append(target_list[idx_list[idx]])
+
+        except:
             fail_list.append(target_list[idx_list[idx]])
 
     # Filter out redundant hits
@@ -117,7 +135,11 @@ def main():
     for name, ti in tqdm(
         zip(pass_list, tax_info), "[INFO] Parsing XML data", total=len(pass_list)
     ):
-        namelist = get_other_names(ti)
+        try:
+            namelist = get_other_names(ti)
+        except:
+            fail_list.append(name)
+            continue
         if name in namelist:
             namelist.remove(name)
 
