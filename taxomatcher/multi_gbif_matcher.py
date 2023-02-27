@@ -53,10 +53,7 @@ def get_sp_id(sp):
 def get_synonyms(sp_key):
     nu = species.name_usage(sp_key, data="synonyms")["results"]
     if len(nu) > 0:
-        if "canonicalName" in nu[0]:
-            return [i["canonicalName"] for i in nu]
-        else:
-            return []
+        return [i["canonicalName"] for i in nu if "canonicalName" in i]
     else:
         return []
 
@@ -66,6 +63,8 @@ def worker(sp):
     if key:
         synonyms = get_synonyms(key)
         synonyms.insert(0, sp)
+        if sp != curr_name:
+            synonyms.append(curr_name)
         synonyms.append(curr_name)
     else:
         synonyms = [sp]
