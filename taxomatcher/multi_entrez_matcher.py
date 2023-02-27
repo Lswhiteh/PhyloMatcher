@@ -27,7 +27,6 @@ def get_ua():
         required=True,
         help="CSV where first column is a list of target species names to look up. Will check other columns too. Ignores final column, assumes is notes.",
     )
-    ap.add_argument("-t", "--threads", dest="threads", default=4, required=False)
     return ap.parse_args()
 
 
