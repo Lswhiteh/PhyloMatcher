@@ -69,4 +69,3 @@ dependencies:
     - six==1.16.0
     - url-normalize==1.4.3
     - urllib3==1.26.14
-prefix: /home/lswhiteh/miniconda3/envs/conda-snakemake/envs/taxomatch

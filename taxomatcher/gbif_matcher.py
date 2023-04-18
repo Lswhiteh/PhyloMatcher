@@ -17,19 +17,6 @@ from tqdm import tqdm
 from pygbif import species
 
 
-def get_ua():
-    ap = argparse.ArgumentParser()
-    ap.add_argument(
-        "-c",
-        "--csv",
-        dest="input_csv",
-        required=True,
-        help="CSV where first column is a list of target species names to look up. ",
-    )
-    ap.add_argument("-t", "--threads", dest="threads", required=False, default=4)
-    return ap.parse_args()
-
-
 def read_csv(csvfile):
     target_list = []
     with open(csvfile, "r") as ifile:
@@ -70,9 +57,7 @@ def worker(sp):
     return synonyms
 
 
-def main():
-    ua = get_ua()
-
+def main(ua):
     sp_list = read_csv(ua.input_csv)
     cleaned_sp_list = [i.replace("_", " ") for i in sp_list]
 
@@ -95,6 +80,3 @@ def main():
         for names in synonyms:
             ofile.write("\t".join([i.replace(" ", "_") for i in names]) + "\n")
 
-
-if __name__ == "__main__":
-    main()

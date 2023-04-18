@@ -99,8 +99,7 @@ def read_csv(csvfile):
     return sp_list, target_list, idx_list
 
 
-def main():
-    ua = get_ua()
+def main(ua):
     Entrez.email = ua.email
 
     sp_list, target_list, idx_list = read_csv(ua.input_csv)
@@ -169,7 +168,3 @@ def main():
             failfile.write(i.replace(" ", "_") + "\n")
 
     print("[INFO] Done")
-
-
-if __name__ == "__main__":
-    main()
