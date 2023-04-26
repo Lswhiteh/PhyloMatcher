@@ -14,7 +14,15 @@ def main():
     ap.add_argument("-t", "--threads", dest="threads", required=False, default=4)
     ap.add_argument("-e", "--email", dest="email", required="ncbi" in sys.argv)
 
-    return ap.parse_args()
+    ua = ap.parse_args()
+    
+    if ua.mode == "gbif":
+        from . import gbif_matcher      
+        gbif_matcher.main(ua.input_csv, ua.threads)
+    elif ua.mode == "ncbi":
+        from . import entrez_matcher
+        entrez_matcher.main(ua)
+
 
 if __name__=="__main__":
     main()
