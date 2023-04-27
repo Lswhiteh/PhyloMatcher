@@ -1,6 +1,8 @@
 import PySimpleGUI as sg
-import shutil
 import os
+import shutil
+from gbif_matcher import main as gbif_main
+from gbif_matcher import get_file_name as gbif_output_name
 
 sg.theme('DarkAmber')   # set GUI color
 
@@ -36,9 +38,8 @@ while True:
             continue
         
         else:
-            # Run Taxomatcher 
-            
-
+            # Run Taxomatcher on selected file
+            gbif_main(input_csv = values['-IN-'], threads = 4)
 
             # Prompt the user to select a file destination
             window['-OUTPUT_MSG-'].update(visible=True)
@@ -50,11 +51,13 @@ while True:
         window['Save'].update(visible=True)
     
     if event == 'Save':
-        path_of_this_file = os.path.dirname(__file__)
-        taxo_matcher_output_dir = os.path.join(path_of_this_file, "output")
         dest_dr = values['-DEST-']
 
-        # shutil.copytree(taxo_matcher_output_dir, dest_dr)
+        output_file = gbif_output_name()
+
+        # Move output file from output directory to destination
+        shutil.move(output_file, dest_dr)
+        
         sg.popup(f'Taxomatcher output has been saved to {dest_dr}')
 
         break

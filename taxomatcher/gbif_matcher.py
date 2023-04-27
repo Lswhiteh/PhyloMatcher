@@ -56,6 +56,8 @@ def worker(sp):
 
     return synonyms
 
+def get_file_name() -> str:
+    return filename
 
 def main(input_csv, threads):
     run_name = input_csv.split("/")[-1].split(".")[0]
@@ -76,13 +78,13 @@ def main(input_csv, threads):
         ["Tree_Sp_Name"] + [f"Eq_{i}" for i in range(max_len - 1)] + ["Curr_Name"]
     )
  
-    os.makedirs("./output", exist_ok=True)
-    filename = f"output/{run_name}_gbif_output.tsv"
+    os.makedirs("../output", exist_ok=True)
+    global filename
+    filename = f"../output/{run_name}_gbif_output.tsv"
 
     if not os.path.isfile(filename):
         # if output file does not exist, create an empty file
         open(filename, 'a').close()
-
 
     with open(filename, "w") as ofile:
         ofile.write("\t".join(eq_headers) + "\n")
