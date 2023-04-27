@@ -99,10 +99,10 @@ def read_csv(csvfile):
     return sp_list, target_list, idx_list
 
 
-def main(ua):
-    Entrez.email = ua.email
+def main(input_csv: str, user_email: str):
+    Entrez.email = user_email
 
-    sp_list, target_list, idx_list = read_csv(ua.input_csv)
+    sp_list, target_list, idx_list = read_csv(input_csv)
     cleaned_sp_list = [i.replace("_", " ") for i in sp_list]
 
     name_res = []
@@ -158,12 +158,14 @@ def main(ua):
     max_len = max([len(i) for i in name_res])
     eq_headers = ["Tree_Sp_Name"] + [f"Eq_{i}" for i in range(max_len - 1)]
 
-    with open(f"output/multi_taxomatcher_output.tsv", "w") as ofile:
+    run_name = input_csv.split("/")[-1].split(".")[0]
+
+    with open(f"../output/{run_name}_ncbi_output.tsv", "w") as ofile:
         ofile.write("\t".join(eq_headers) + "\n")
         for names in name_res:
             ofile.write("\t".join(names) + "\n")
 
-    with open("output/multi_taxomatcher_fails.tsv", "w") as failfile:
+    with open(f"../output/{run_name}_ncbi_fails.tsv", "w") as failfile:
         for i in set(fail_list):
             failfile.write(i.replace(" ", "_") + "\n")
 

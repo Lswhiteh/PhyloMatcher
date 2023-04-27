@@ -56,9 +56,6 @@ def worker(sp):
 
     return synonyms
 
-def get_file_name() -> str:
-    return filename
-
 def main(input_csv, threads):
     run_name = input_csv.split("/")[-1].split(".")[0]
     sp_list = read_csv(input_csv)
@@ -79,7 +76,6 @@ def main(input_csv, threads):
     )
  
     os.makedirs("../output", exist_ok=True)
-    global filename
     filename = f"../output/{run_name}_gbif_output.tsv"
 
     if not os.path.isfile(filename):
