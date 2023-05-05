@@ -15,7 +15,7 @@ import argparse
 import multiprocessing as mp
 from tqdm import tqdm
 from pygbif import species
-
+import os
 
 def read_csv(csvfile):
     target_list = []
@@ -56,12 +56,11 @@ def worker(sp):
 
     return synonyms
 
-
-def main(ua):
-    sp_list = read_csv(ua.input_csv)
+def main(input_csv, outfile, threads):
+    sp_list = read_csv(input_csv)
     cleaned_sp_list = [i.replace("_", " ") for i in sp_list]
 
-    with mp.Pool(ua.threads) as p:
+    with mp.Pool(threads) as p:
         synonyms = list(
             tqdm(
                 p.imap(worker, cleaned_sp_list, chunksize=4),
@@ -74,9 +73,10 @@ def main(ua):
     eq_headers = (
         ["Tree_Sp_Name"] + [f"Eq_{i}" for i in range(max_len - 1)] + ["Curr_Name"]
     )
+    
+    os.makedirs(os.path.dirname(outfile), exist_ok=True)
 
-    with open(f"output/gbif_output.tsv", "w") as ofile:
+    with open(outfile, "w") as ofile:
         ofile.write("\t".join(eq_headers) + "\n")
         for names in synonyms:
             ofile.write("\t".join([i.replace(" ", "_") for i in names]) + "\n")
-
