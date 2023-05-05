@@ -12,10 +12,10 @@ Resources:
 Logan Whitehouse - lswhiteh@unc.edu
 """
 import argparse
+import os
 
 from tqdm import tqdm
 from Bio import Entrez
-
 
 def get_ua():
     ap = argparse.ArgumentParser()
@@ -99,8 +99,9 @@ def read_csv(csvfile):
     return sp_list, target_list, idx_list
 
 
-def main(input_csv: str, user_email: str):
+def main(input_csv, outfile, user_email):
     Entrez.email = user_email
+    os.makedirs(os.path.dirname(outfile), exist_ok=True)
 
     sp_list, target_list, idx_list = read_csv(input_csv)
     cleaned_sp_list = [i.replace("_", " ") for i in sp_list]
@@ -158,14 +159,12 @@ def main(input_csv: str, user_email: str):
     max_len = max([len(i) for i in name_res])
     eq_headers = ["Tree_Sp_Name"] + [f"Eq_{i}" for i in range(max_len - 1)]
 
-    run_name = input_csv.split("/")[-1].split(".")[0]
-
-    with open(f"../output/{run_name}_ncbi_output.tsv", "w") as ofile:
+    with open(outfile, "w") as ofile:
         ofile.write("\t".join(eq_headers) + "\n")
         for names in name_res:
             ofile.write("\t".join(names) + "\n")
 
-    with open(f"../output/{run_name}_ncbi_fails.tsv", "w") as failfile:
+    with open(f"{outfile.split('.')[0]}_fails.csv", "w") as failfile:
         for i in set(fail_list):
             failfile.write(i.replace(" ", "_") + "\n")
 
