@@ -2,3 +2,7 @@ dist/
 build/
 *egg*
 __pycache__/
+.vscode/settings.json
+out/
+data/
+output/
