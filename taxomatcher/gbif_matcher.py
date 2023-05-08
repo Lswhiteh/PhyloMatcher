@@ -11,6 +11,7 @@ Logan Whitehouse - lswhiteh@unc.edu
 """
 import argparse
 import multiprocessing as mp
+
 from tqdm import tqdm
 from pygbif import species
 import os
