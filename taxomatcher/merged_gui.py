@@ -6,7 +6,8 @@ from tqdm import tqdm
 from pygbif import species
 import os
 
-def read_csv(csvfile):
+
+def gbif_read_csv(csvfile):
     target_list = []
     with open(csvfile, "r") as ifile:
         for line in ifile.readlines():
@@ -45,8 +46,9 @@ def worker(sp):
 
     return synonyms
 
+
 def gbif_main(input_csv, outfile, threads):
-    sp_list = read_csv(input_csv)
+    sp_list = gbif_read_csv(input_csv)
     cleaned_sp_list = [i.replace("_", " ") for i in sp_list]
 
     with mp.Pool(threads) as p:
@@ -62,7 +64,7 @@ def gbif_main(input_csv, outfile, threads):
     eq_headers = (
         ["Tree_Sp_Name"] + [f"Eq_{i}" for i in range(max_len - 1)] + ["Curr_Name"]
     )
-    
+
     os.makedirs(os.path.dirname(outfile), exist_ok=True)
 
     with open(outfile, "w") as ofile:
@@ -79,6 +81,7 @@ import Bio
 
 from tqdm import tqdm
 from Bio import Entrez
+
 
 def get_ua():
     ap = argparse.ArgumentParser()
@@ -145,7 +148,7 @@ def get_other_names(tax_dict):
     return list(set(synonyms))
 
 
-def read_csv(csvfile):
+def ncbi_read_csv(csvfile):
     sp_list = []
     target_list = []
     idx_list = []
@@ -166,7 +169,7 @@ def entrez_main(input_csv, outfile, user_email):
     Entrez.email = user_email
     os.makedirs(os.path.dirname(outfile), exist_ok=True)
 
-    sp_list, target_list, idx_list = read_csv(input_csv)
+    sp_list, target_list, idx_list = ncbi_read_csv(input_csv)
     cleaned_sp_list = [i.replace("_", " ") for i in sp_list]
 
     name_res = []
@@ -233,66 +236,72 @@ def entrez_main(input_csv, outfile, user_email):
 
     print("[INFO] Done")
 
+
 ## TRAITMATCHER
 
-import pandas as pd 
+import pandas as pd
 import csv
 from tqdm import tqdm
 import os
 
+
 def trait_main(traitfile, speciesfile, outfile):
     os.makedirs(os.path.dirname(outfile), exist_ok=True)
 
-    with open(traitfile, 'r') as tfile:
+    with open(traitfile, "r") as tfile:
         dialect = csv.Sniffer().sniff(tfile.readline())
-        
+
     trait_df = pd.read_csv(traitfile, delimiter=dialect.delimiter)
     species_df = pd.read_csv(speciesfile)
-    
+
     specieslist = set(list(species_df.stack().values))
     for sp in tqdm(specieslist, desc="Matching taxa to traits"):
         trait_df.loc[trait_df.iloc[:, 0] == sp, "tree_name"] = sp
-                
+
     trait_df.to_csv(outfile, index=False)
 
 
-## GUI 
+## GUI
 
 import PySimpleGUI as sg
 import os
 import shutil
 
-sg.theme('DarkAmber')   # set GUI color
+sg.theme("DarkAmber")  # set GUI color
 
 # Define all the stuff inside GUI window
-layout = [[sg.Text('Enter CSV file:')],
-          
-          [sg.Input(enable_events=True, key='-IN_CSV-'), sg.FileBrowse()], # Let GUI detect inputs and add browse button
-    
-          [sg.Text('Select a destination folder:', visible=False, key='-OUTPUT_MSG-')],
-          [sg.Input(enable_events=True, visible=False, key='-DEST-'), sg.FolderBrowse(visible=False, key='-DEST_BROWSE-')],
-
-          [sg.Text('', key='options')], # To reveal options later
-          [sg.Button('Run Taxomatcher', visible=False, enable_events=True)],
-
-          [sg.Text('', key='options_2', size=(1))],
-          [sg.Button('Run Traitmatcher', visible=False, enable_events=True)],
-
-          [sg.Button('Help'), sg.Button('License'), sg.Button('Exit')],
-          ]
+layout = [
+    [sg.Text("Enter CSV file:")],
+    [
+        sg.Input(enable_events=True, key="-IN_CSV-"),
+        sg.FileBrowse(),
+    ],  # Let GUI detect inputs and add browse button
+    [sg.Text("Select a destination folder:", visible=False, key="-OUTPUT_MSG-")],
+    [
+        sg.Input(enable_events=True, visible=False, key="-DEST-"),
+        sg.FolderBrowse(visible=False, key="-DEST_BROWSE-"),
+    ],
+    [sg.Text("", key="options")],  # To reveal options later
+    [sg.Button("Run Taxomatcher", visible=False, enable_events=True)],
+    [sg.Text("", key="options_2", size=(1))],
+    [sg.Button("Run Traitmatcher", visible=False, enable_events=True)],
+    [sg.Button("Help"), sg.Button("License"), sg.Button("Exit")],
+]
 
 # Create the GUI window
-window = sg.Window('Taxomatcher', layout, size = (550,450))
+window = sg.Window("Taxomatcher", layout, size=(550, 450))
 
 config = True
 
 # Event Loop to process GUI events
 while True:
     event, values = window.read()
-    if event == sg.WIN_CLOSED or event == 'Exit': # if user closes window or clicks exit
+    if (
+        event == sg.WIN_CLOSED or event == "Exit"
+    ):  # if user closes window or clicks exit
         break
 
-    if event == 'License':
+    if event == "License":
         license_text = """MIT License
 
             Copyright (c) 2023 Logan Whitehouse
@@ -315,145 +324,221 @@ while True:
             OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
             SOFTWARE."""
 
-        license_window = sg.Window('License', [[sg.Text(license_text)]])
+        license_window = sg.Window("License", [[sg.Text(license_text)]])
         while True:
             event, values = license_window.read()
-            if event in (None, 'OK'):
+            if event in (None, "OK"):
                 break
         license_window.close()
 
     # If press help
-    if event == 'Help':
+    if event == "Help":
         help_layout = [
-            [sg.TabGroup([
-                [sg.Tab('Main', [
-                    [sg.Multiline("Make sure none of the files being handled by the program are currently open (ex: in excel).\n\nSpecies name input file should be single column CSV of target species to look up synonyms for (other columns will be ignored). Names can be either space or underscore ('_') seperated - 'Sphenodon_punctatus' is equivalent to 'Sphenodon punctatus'. See 'Example Sp_CSV' tab.\n\nSpecies trait input file should be CSV with species name in first column. Species names should be seperated by underscores and case-sensetive. See 'Example Trait_CSV' tab.\n\nFor more info, see: https://github.com/Lswhiteh/taxomatcher/blob/main/README.md", size=(70, 10), key='-MAIN_TEXT-')],
-                    [sg.Button('OK')]
-                ])],
-                [sg.Tab('Example Sp_CSV', [
-                    [sg.Table(
-                        values=[['Homo sapiens'], ['Gecko gekko'], ['Gorilla gorilla']],
-                        headings=['Species Name'],
-                        auto_size_columns=True,
-                        num_rows=10,
-                        vertical_scroll_only=True,
-                    )]
-                ])],
-                [sg.Tab('Example Trait_CSV', [
-                    [sg.Table(
-                        values=[['Homo_sapiens', 'Omnivore', 'Diurnal'], 
-                                ['Gecko_gekko', 'Carnivore', 'Nocturnal'], 
-                                ['Gorilla_gorilla', 'Omnivore', 'Diurnal']],
-                        headings=['Species Name', 'Diet', 'Activity'],
-                        auto_size_columns=True,
-                        num_rows=10,
-                        vertical_scroll_only=True,
-                    )]
-                ])]
-            ])]]
-        help_window = sg.Window('Help', help_layout)
+            [
+                sg.TabGroup(
+                    [
+                        [
+                            sg.Tab(
+                                "Main",
+                                [
+                                    [
+                                        sg.Multiline(
+                                            "Make sure none of the files being handled by the program are currently open (ex: in excel).\n\nSpecies name input file should be single column CSV of target species to look up synonyms for (other columns will be ignored). Names can be either space or underscore ('_') seperated - 'Sphenodon_punctatus' is equivalent to 'Sphenodon punctatus'. See 'Example Sp_CSV' tab.\n\nSpecies trait input file should be CSV with species name in first column. Species names should be seperated by underscores and case-sensetive. See 'Example Trait_CSV' tab.\n\nFor more info, see: https://github.com/Lswhiteh/taxomatcher/blob/main/README.md",
+                                            size=(70, 10),
+                                            key="-MAIN_TEXT-",
+                                        )
+                                    ],
+                                    [sg.Button("OK")],
+                                ],
+                            )
+                        ],
+                        [
+                            sg.Tab(
+                                "Example Sp_CSV",
+                                [
+                                    [
+                                        sg.Table(
+                                            values=[
+                                                ["Homo sapiens"],
+                                                ["Gecko gekko"],
+                                                ["Gorilla gorilla"],
+                                            ],
+                                            headings=["Species Name"],
+                                            auto_size_columns=True,
+                                            num_rows=10,
+                                            vertical_scroll_only=True,
+                                        )
+                                    ]
+                                ],
+                            )
+                        ],
+                        [
+                            sg.Tab(
+                                "Example Trait_CSV",
+                                [
+                                    [
+                                        sg.Table(
+                                            values=[
+                                                ["Homo_sapiens", "Omnivore", "Diurnal"],
+                                                [
+                                                    "Gecko_gekko",
+                                                    "Carnivore",
+                                                    "Nocturnal",
+                                                ],
+                                                [
+                                                    "Gorilla_gorilla",
+                                                    "Omnivore",
+                                                    "Diurnal",
+                                                ],
+                                            ],
+                                            headings=[
+                                                "Species Name",
+                                                "Diet",
+                                                "Activity",
+                                            ],
+                                            auto_size_columns=True,
+                                            num_rows=10,
+                                            vertical_scroll_only=True,
+                                        )
+                                    ]
+                                ],
+                            )
+                        ],
+                    ]
+                )
+            ]
+        ]
+        help_window = sg.Window("Help", help_layout)
         while True:
             event, values = help_window.read()
-            if event in (None, 'OK'):
+            if event in (None, "OK"):
                 break
         help_window.close()
 
-
-    if '-IN_CSV-' in values: 
-        if values['-IN_CSV-']:
+    if "-IN_CSV-" in values:
+        if values["-IN_CSV-"]:
             # Prompt the user to select a file destination
-            window['-OUTPUT_MSG-'].update(visible=True)
-            window['-DEST-'].update(visible=True)
-            window['-DEST_BROWSE-'].update(visible=True)
+            window["-OUTPUT_MSG-"].update(visible=True)
+            window["-DEST-"].update(visible=True)
+            window["-DEST_BROWSE-"].update(visible=True)
 
     # If they've selected input file & destination, show options + run button
-    if '-IN_CSV-' in values and '-DEST-' in values and config == True:
-            search_layout = [[sg.Radio('Search GBIF (recommended)', 'option', key='gbif', default=True),
-                              sg.Radio('Search NCBI (many misses, not recommended)', 'option', key='ncbi')],
-                             [sg.Text('Enter your professional email:'),
-                              sg.Input(enable_events=True, size=(25, 1), key='-EMAIL-')],
-                             [sg.Text('Enter a thread count (optional):'),
-                              sg.Input(enable_events=True, size=(5, 1), key='-THREADS-')],
-            ]
-            window.extend_layout(window['options'], search_layout)
+    if "-IN_CSV-" in values and "-DEST-" in values and config == True:
+        search_layout = [
+            [
+                sg.Radio(
+                    "Search GBIF (recommended)", "option", key="gbif", default=True
+                ),
+                sg.Radio(
+                    "Search NCBI (many misses, not recommended)", "option", key="ncbi"
+                ),
+            ],
+            [
+                sg.Text("Enter your professional email:"),
+                sg.Input(enable_events=True, size=(25, 1), key="-EMAIL-"),
+            ],
+            [
+                sg.Text("Enter a thread count (optional):"),
+                sg.Input(enable_events=True, size=(5, 1), key="-THREADS-"),
+            ],
+        ]
+        window.extend_layout(window["options"], search_layout)
 
-            # Add run button
-            window['Run Taxomatcher'].update(visible=True)
-            
-            window.finalize()
-            config = False
+        # Add run button
+        window["Run Taxomatcher"].update(visible=True)
+
+        window.finalize()
+        config = False
 
     # If they click run
-    if event == 'Run Taxomatcher':
+    if event == "Run Taxomatcher":
         # Check if a file has been selected:
-        if not values['-IN_CSV-'] or not values['-DEST-']:
-            sg.popup('Please select a file to process and a place to store the output.')
+        if not values["-IN_CSV-"] or not values["-DEST-"]:
+            sg.popup("Please select a file to process and a place to store the output.")
             continue
-        
-        elif not values['-IN_CSV-'].endswith('.csv'):
-            sg.popup('Taxomatcher only supports analysis of CSV files. Please input a CSV, and see "Help" for more details.')
+
+        elif not values["-IN_CSV-"].endswith(".csv"):
+            sg.popup(
+                'Taxomatcher only supports analysis of CSV files. Please input a CSV, and see "Help" for more details.'
+            )
             continue
-                
+
         else:
-            chosen_csv = values['-IN_CSV-']
-            dest_dr = values['-DEST-']
+            chosen_csv = values["-IN_CSV-"]
+            dest_dr = values["-DEST-"]
             run_name = chosen_csv.split("/")[-1].split(".")[0]
 
             # Make final output file destination from given dir
-            if values['gbif']:
+            if values["gbif"]:
                 taxo_file = f"{values['-DEST-']}/{run_name}_GBIF_output.tsv"
-                
-            elif values['ncbi']:
+
+            elif values["ncbi"]:
                 taxo_file = f"{values['-DEST-']}/{run_name}_NCBI_output.tsv"
 
             # Use their chosen thread value, else default to 4
-            if values['-THREADS-'] != '':
-                chosen_threads = values['-THREADS-']
-            else: 
+            if values["-THREADS-"] != "":
+                chosen_threads = values["-THREADS-"]
+            else:
                 chosen_threads = 4
 
-
             lock_configs = {
-                window['gbif'].update(disabled=True), 
-                window['ncbi'].update(disabled=True), 
-                window['-EMAIL-'].update(disabled=True), 
-                window['-THREADS-'].update(disabled=True), 
-                window['Run Taxomatcher'].update(disabled=True)}
+                window["gbif"].update(disabled=True),
+                window["ncbi"].update(disabled=True),
+                window["-EMAIL-"].update(disabled=True),
+                window["-THREADS-"].update(disabled=True),
+                window["Run Taxomatcher"].update(disabled=True),
+            }
 
             # Run Taxomatcher on their chosen database
-            if values['gbif']:
+            if values["gbif"]:
                 lock_configs
-                gbif_main(input_csv = chosen_csv, outfile = taxo_file, threads = chosen_threads)
+                gbif_main(
+                    input_csv=chosen_csv, outfile=taxo_file, threads=chosen_threads
+                )
 
-            elif values['ncbi']:
-                if values['-EMAIL-'] == '':
-                    sg.popup('NCBI requires entry of a user email to query.')
+            elif values["ncbi"]:
+                if values["-EMAIL-"] == "":
+                    sg.popup("NCBI requires entry of a user email to query.")
                     continue
-                else: 
+                else:
                     lock_configs
-                    entrez_main(input_csv = chosen_csv, outfile = taxo_file, user_email=values['-EMAIL-'])
+                    entrez_main(
+                        input_csv=chosen_csv,
+                        outfile=taxo_file,
+                        user_email=values["-EMAIL-"],
+                    )
 
-            sg.popup(f'Taxomatcher has completed successfully. Results have been saved to {dest_dr}')
-            
-            trait_layout = [ 
-                             [sg.Text('Optional: to run trait matcher, enter trait file below (see Help for more info)')],
-                             [sg.Input(enable_events=True, key='-TRAIT_FILE-'), sg.FileBrowse()],
-                             [sg.Button('Run Traitmatcher', visible=False, enable_events=True)],
+            sg.popup(
+                f"Taxomatcher has completed successfully. Results have been saved to {dest_dr}"
+            )
+
+            trait_layout = [
+                [
+                    sg.Text(
+                        "Optional: to run trait matcher, enter trait file below (see Help for more info)"
+                    )
+                ],
+                [sg.Input(enable_events=True, key="-TRAIT_FILE-"), sg.FileBrowse()],
+                [sg.Button("Run Traitmatcher", visible=False, enable_events=True)],
             ]
-            window.extend_layout(window['options_2'], trait_layout)
+            window.extend_layout(window["options_2"], trait_layout)
             window.finalize()
-        
-    if '-TRAIT_FILE-' in values:
-        if values['-TRAIT_FILE-']:
-            window['Run Traitmatcher'].update(visible=True)
-    
-    if event == 'Run Traitmatcher':
+
+    if "-TRAIT_FILE-" in values:
+        if values["-TRAIT_FILE-"]:
+            window["Run Traitmatcher"].update(visible=True)
+
+    if event == "Run Traitmatcher":
         # Save trait file in same place as saved taxo output
         trait_file = f"{values['-DEST-']}/{run_name}_traitmatch_output.csv"
 
-        trait_main(traitfile = values['-TRAIT_FILE-'], speciesfile = taxo_file, outfile = trait_file)
+        trait_main(
+            traitfile=values["-TRAIT_FILE-"], speciesfile=taxo_file, outfile=trait_file
+        )
 
-        sg.popup(f'Traitmatcher has completed successfully. Results have been saved to {dest_dr} (same as Taxomatcher output)')
-        break 
+        sg.popup(
+            f"Traitmatcher has completed successfully. Results have been saved to {dest_dr} (same as Taxomatcher output)"
+        )
+        break
 
 window.close()
