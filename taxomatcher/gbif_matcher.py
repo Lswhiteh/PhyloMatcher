@@ -16,6 +16,7 @@ from tqdm import tqdm
 from pygbif import species
 import os
 
+
 def read_csv(csvfile):
     target_list = []
     with open(csvfile, "r") as ifile:
@@ -49,11 +50,13 @@ def worker(sp):
     if key:
         synonyms = get_synonyms(key)
         synonyms.insert(0, sp)
-        synonyms.append(curr_name)
+        synonyms.insert(1, curr_name)
+
     else:
         synonyms = [sp]
 
-    return synonyms
+    return list(set(synonyms))
+
 
 def main(input_csv, outfile, threads):
     sp_list = read_csv(input_csv)
@@ -68,14 +71,15 @@ def main(input_csv, outfile, threads):
             )
         )
 
+    # Cleanup
+
     max_len = max([len(i) for i in synonyms])
-    eq_headers = (
-        ["Tree_Sp_Name"] + [f"Eq_{i}" for i in range(max_len - 1)] + ["Curr_Name"]
-    )
-    
-    os.makedirs(os.path.dirname(outfile), exist_ok=True)
+    eq_headers = ["Tree_Sp_Name"] + [f"Eq_{i}" for i in range(max_len - 1)]
+
+    if "/" in outfile:
+        os.makedirs(os.path.dirname(outfile), exist_ok=True)
 
     with open(outfile, "w") as ofile:
-        ofile.write("\t".join(eq_headers) + "\n")
+        ofile.write(",".join(eq_headers) + "\n")
         for names in synonyms:
-            ofile.write("\t".join([i.replace(" ", "_") for i in names]) + "\n")
+            ofile.write(",".join([i.replace(" ", "_") for i in names]) + "\n")
