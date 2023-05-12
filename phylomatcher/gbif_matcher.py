@@ -9,8 +9,7 @@ Resources:
 - https://www.ncbi.nlm.nih.gov/books/NBK25500/
 Logan Whitehouse - lswhiteh@unc.edu
 """
-import argparse
-import multiprocessing as mp
+from concurrent.futures import ThreadPoolExecutor
 
 from tqdm import tqdm
 from pygbif import species
@@ -50,12 +49,14 @@ def worker(sp):
     if key:
         synonyms = get_synonyms(key)
         synonyms.insert(0, sp)
-        synonyms.insert(1, curr_name)
-
+        synonyms = list(set(synonyms))
+        if synonyms.index(sp) != 0:
+            synonyms.pop(synonyms.index(sp))
+            synonyms.insert(0, sp)
     else:
         synonyms = [sp]
 
-    return list(set(synonyms))
+    return synonyms
 
 
 def main(input_csv, outfile, threads):
