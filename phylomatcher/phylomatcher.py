@@ -2,7 +2,7 @@ import argparse
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Taxomatcher")
+    ap = argparse.ArgumentParser(description="PhyloMatcher")
     subparsers = ap.add_subparsers(title="mode", dest="mode")
     gbif_parser = subparsers.add_parser("gbif")
     gbif_parser.add_argument(
