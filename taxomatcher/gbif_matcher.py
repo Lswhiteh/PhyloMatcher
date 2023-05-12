@@ -62,10 +62,10 @@ def main(input_csv, outfile, threads):
     sp_list = read_csv(input_csv)
     cleaned_sp_list = [i.replace("_", " ") for i in sp_list]
 
-    with mp.Pool(threads) as p:
+    with ThreadPoolExecutor(max_workers=threads) as executor:
         synonyms = list(
             tqdm(
-                p.imap(worker, cleaned_sp_list, chunksize=4),
+                executor.map(worker, cleaned_sp_list),
                 desc="[INFO] Fetching GBIF information",
                 total=len(cleaned_sp_list),
             )
