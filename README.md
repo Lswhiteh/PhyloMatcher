@@ -4,7 +4,7 @@ Python modules to query the GFIB or NCBI Taxonomy databases for synonym names of
 
 ## For use as GUI 
 
-To begin, install the executable for your operating system from the [latest release](https://github.com/Lswhiteh/PhyloMatcher/releases). Run it (be aware that it may some time to open), and select either PhyloMatcher (recommended) or the standalone Traitmatcher. 
+To begin, install the appropriate binary for your operating system from the [latest release](https://github.com/Lswhiteh/PhyloMatcher/releases). Run it (be aware that it may some time to open), and select either PhyloMatcher (recommended) or the standalone Traitmatcher. 
 
 ### PhyloMatcher 
 PhyloMatcher is an end-to-end tool which turns a CSV containing a column of species names into a column of rows in |canonical name, synonym 1, synonym 2, ...| TSV format. It can then optionally feed this output into Traitmatcher if given a CSV file of traits (in rows of |Species_name, trait value 1, trait value 2, ...|), standardizing all species_names. See Help for examples.
