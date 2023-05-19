@@ -47,5 +47,5 @@ def main(traitfile, speciesfile, outfile, header):
                 t_spec = line[0]
                 for s in spec_list:
                     if t_spec in s[0]:
-                        line[0] = s[0]
+                        line[0] = s[0].split(',')[0]
                 ofile.write(",".join(line) + "\n")
