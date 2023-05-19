@@ -3,7 +3,7 @@ import csv
 from tqdm import tqdm
 import os
 import subprocess
-
+from fuzzywuzzy import fuzz
 
 def file_len(fname):
     p = subprocess.Popen(
@@ -45,7 +45,11 @@ def main(traitfile, speciesfile, outfile, header):
                 desc="Searching for matches",
             ):
                 t_spec = line[0]
-                for s in spec_list:
-                    if t_spec in s[0]:
-                        line[0] = s[0].split(',')[0]
+                for species in spec_list:
+                    species = species[0].split(',')
+                    for synonym in species:
+                        similarity_ratio = fuzz.ratio(t_spec, synonym)
+                        if similarity_ratio >= 85:  # Arbitrary similiarity threshold of 85%
+                            line[0] = species[0]
+
                 ofile.write(",".join(line) + "\n")

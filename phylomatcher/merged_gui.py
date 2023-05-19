@@ -248,7 +248,7 @@ import csv
 from tqdm import tqdm
 import os
 import subprocess
-
+from fuzzywuzzy import fuzz
 
 def file_len(fname):
     p = subprocess.Popen(
@@ -260,7 +260,7 @@ def file_len(fname):
     return int(result.strip().split()[0])
 
 
-def main(traitfile, speciesfile, outfile, header):
+def trait_main(traitfile, speciesfile, outfile, header):
     if "/" in outfile:
         os.makedirs(os.path.dirname(outfile), exist_ok=True)
 
@@ -290,9 +290,13 @@ def main(traitfile, speciesfile, outfile, header):
                 desc="Searching for matches",
             ):
                 t_spec = line[0]
-                for s in spec_list:
-                    if t_spec in s[0]:
-                        line[0] = s[0]
+                for species in spec_list:
+                    species = species[0].split(',')
+                    for synonym in species:
+                        similarity_ratio = fuzz.ratio(t_spec, synonym)
+                        if similarity_ratio >= 85:  # Arbitrary similiarity threshold of 85%
+                            line[0] = species[0]
+
                 ofile.write(",".join(line) + "\n")
 
 
@@ -319,6 +323,18 @@ taxo_layout = [
     [sg.Text("", key="options")],  # To reveal taxomatch options later
     [sg.Button("Run PhyloMatcher", visible=False, enable_events=True, tooltip='Make sure all selected files are not open (ex: in excel).')],
     [sg.Text("", key="options_2", size=(1))],
+    [sg.Frame(
+            'Your trait file',
+            [
+                [
+                    sg.Radio('Has header', 'header_option', key='-HAS_HEADER-', default=True),
+                    sg.Radio("Doesn't have header", 'header_option', key='-NO_HEADER-')
+                ]
+            ],
+            visible=False,
+            key='-TRAIT_FRAME-'
+        )
+    ],
     [sg.Button("Run Traitmatcher", visible=False, enable_events=True, tooltip='Make sure all selected files are not open (ex: in excel).')],
     [sg.Button("Help"), sg.Button("License"), sg.Button("Exit")],
 ]
@@ -328,9 +344,13 @@ trait_layout = [
     [sg.Text("Enter a trait CSV file:")],
     [
         sg.Input(enable_events=True, key="-IN_CSV-"),
-        sg.FileBrowse(),
+        sg.FileBrowse()
     ],
-
+    [
+        sg.Text('Your trait file:'),
+        sg.Radio('Has a header', 'header_option', key='-HAS_HEADER-'),
+        sg.Radio("Doesn't have header", 'header_option', key='-NO_HEADER-', default=True)
+    ],
     [sg.Text("Enter a species TSV file:")],
     [
         sg.Input(enable_events=True, key="-SPEC_FILE-"),
@@ -345,6 +365,7 @@ trait_layout = [
 
     [sg.Button("Run Traitmatcher (standalone)", visible=False, enable_events=True)],
     [sg.Text("", key="trait_options")],  # To reveal standalone traitmatcher options later
+    [sg.Button("Help"), sg.Button("License"), sg.Button("Exit")]
 ]
 
 # GUI to choose between PhyloMatcher and standalone traitmatcher
@@ -530,7 +551,7 @@ while True:
         help_window.close()
 
     if current_window == "trait":
-        if values.get("-SPEC_FILE-") is not None and trait_warned == False:
+        if "-SPEC_FILE-" in values and trait_warned == False:
             sg.popup("Note: the species file must be a TSV formatted identical to PhyloMatcher output ('canonical'/tree names in first column, synonyms in subsequent rows; case-sensitive and separated by underscores) - see Help for example.")
             trait_warned = True
         
@@ -550,8 +571,13 @@ while True:
                 run_name = values['-IN_CSV-'].split("/")[-1].split(".")[0]
                 trait_file = f"{values['-DEST-']}/{run_name}_traitmatch_output.csv"
 
+            if values['-HAS_HEADER-']:
+                has_header = True
+            elif values['NO_HEADER-']:
+                has_header = False
+
             trait_main(
-                traitfile=values["-IN_CSV-"], speciesfile=values["-SPEC_FILE-"], outfile=trait_file, header = True
+                traitfile=values["-IN_CSV-"], speciesfile=values["-SPEC_FILE-"], outfile=trait_file, header = has_header
             )
 
             sg.popup(
@@ -672,7 +698,6 @@ while True:
                         )
                     ],
                     [sg.Input(enable_events=True, key="-TRAIT_FILE-"), sg.FileBrowse()],
-                    [sg.Button("Run Traitmatcher", visible=False, enable_events=True)],
                 ]
                 window.extend_layout(window["options_2"], trait_layout)
                 window.finalize()
@@ -680,13 +705,19 @@ while True:
         if "-TRAIT_FILE-" in values:
             if values["-TRAIT_FILE-"]:
                 window["Run Traitmatcher"].update(visible=True)
+                window["-TRAIT_FRAME-"].update(visible=True)
 
         if event == "Run Traitmatcher":
             # Save trait file in same place as saved taxo output
             trait_file = f"{values['-DEST-']}/{run_name}_traitmatch_output.csv"
 
+            if values['-HAS_HEADER-']:
+                has_header = True
+            elif values['-NO_HEADER-']:
+                has_header = False
+
             trait_main(
-                traitfile=values["-TRAIT_FILE-"], speciesfile=taxo_file, outfile=trait_file
+                traitfile=values["-TRAIT_FILE-"], speciesfile=taxo_file, outfile=trait_file, header = has_header
             )
 
             sg.popup(
