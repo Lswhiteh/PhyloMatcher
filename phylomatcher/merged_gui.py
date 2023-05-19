@@ -1,13 +1,13 @@
 ## GBIF MATCHER
 
-import argparse
 from concurrent.futures import ThreadPoolExecutor
+
 from tqdm import tqdm
 from pygbif import species
 import os
 
 
-def gbif_read_csv(csvfile):
+def read_csv(csvfile):
     target_list = []
     with open(csvfile, "r") as ifile:
         for line in ifile.readlines():
@@ -40,7 +40,10 @@ def worker(sp):
     if key:
         synonyms = get_synonyms(key)
         synonyms.insert(0, sp)
-        synonyms.append(curr_name)
+        synonyms = list(set(synonyms))
+        if synonyms.index(sp) != 0:
+            synonyms.pop(synonyms.index(sp))
+            synonyms.insert(0, sp)
     else:
         synonyms = [sp]
 
@@ -48,7 +51,7 @@ def worker(sp):
 
 
 def gbif_main(input_csv, outfile, threads):
-    sp_list = gbif_read_csv(input_csv)
+    sp_list = read_csv(input_csv)
     cleaned_sp_list = [i.replace("_", " ") for i in sp_list]
 
     with ThreadPoolExecutor(max_workers=threads) as executor:
@@ -60,17 +63,19 @@ def gbif_main(input_csv, outfile, threads):
             )
         )
 
-    max_len = max([len(i) for i in synonyms])
-    eq_headers = (
-        ["Tree_Sp_Name"] + [f"Eq_{i}" for i in range(max_len - 1)] + ["Curr_Name"]
-    )
+    # Cleanup
 
-    os.makedirs(os.path.dirname(outfile), exist_ok=True)
+    max_len = max([len(i) for i in synonyms])
+    eq_headers = ["Tree_Sp_Name"] + [f"Eq_{i}" for i in range(max_len - 1)]
+
+    if "/" in outfile:
+        os.makedirs(os.path.dirname(outfile), exist_ok=True)
 
     with open(outfile, "w") as ofile:
-        ofile.write("\t".join(eq_headers) + "\n")
+        ofile.write(",".join(eq_headers) + "\n")
         for names in synonyms:
-            ofile.write("\t".join([i.replace(" ", "_") for i in names]) + "\n")
+            ofile.write(",".join([i.replace(" ", "_") for i in names]) + "\n")
+
 
 
 ## ENTREZ MATCHER
@@ -238,32 +243,58 @@ def entrez_main(input_csv, outfile, user_email):
 
 
 ## TRAITMATCHER
-
-import pandas as pd 
+import pandas as pd
 import csv
 from tqdm import tqdm
 import os
-from fuzzywuzzy import fuzz, process
+import subprocess
 
-def trait_main(traitfile, speciesfile, outfile):
-    os.makedirs(os.path.dirname(outfile), exist_ok=True)
 
-    with open(traitfile, 'r') as tfile:
-        dialect = csv.Sniffer().sniff(tfile.readline())
-        
-    trait_df = pd.read_csv(traitfile, delimiter=dialect.delimiter)
-    species_df = pd.read_csv(speciesfile)
-    
-    specieslist = set(list(species_df.stack().values))
-    for sp in tqdm(specieslist, desc="Matching taxa to traits"):
-        for idx, row in trait_df.iterrows():
-            ratio = fuzz.partial_ratio(row.iloc[0], sp)
-            if ratio >= 90:  # Arbitrary similiarity threshold of 90
-                matches = process.extractOne(row.iloc[0], specieslist, scorer=fuzz.partial_ratio)
-                if matches[0] == sp:
-                    trait_df.loc[idx, "tree_name"] = sp
+def file_len(fname):
+    p = subprocess.Popen(
+        ["wc", "-l", fname], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
+    result, err = p.communicate()
+    if p.returncode != 0:
+        raise IOError(err)
+    return int(result.strip().split()[0])
 
-    trait_df.to_csv(outfile, index=False)
+
+def main(traitfile, speciesfile, outfile, header):
+    if "/" in outfile:
+        os.makedirs(os.path.dirname(outfile), exist_ok=True)
+
+    with open(speciesfile, "r") as r_obj:
+        csv_reader = csv.reader(r_obj, delimiter="\t")
+        spec_list = list(csv_reader)
+
+    with open(traitfile, "r") as ifile:
+        dialect = csv.Sniffer().sniff(ifile.readline())
+        delim = dialect.delimiter
+
+    print("[INFO] Getting length of file")
+    f_len = file_len(traitfile)
+    print("[INFO] Running")
+
+    with open(outfile, "w") as ofile:
+        with open(traitfile, "r") as tfile:
+            reader = csv.reader(tfile, delimiter=delim, quoting=csv.QUOTE_NONE)
+            if header:
+                f_len -= 1
+                header = next(reader)
+                ofile.write(",".join(header) + "\n")
+
+            for line in tqdm(
+                reader,
+                total=f_len,
+                desc="Searching for matches",
+            ):
+                t_spec = line[0]
+                for s in spec_list:
+                    if t_spec in s[0]:
+                        line[0] = s[0]
+                ofile.write(",".join(line) + "\n")
+
 
 
 ## GUI
@@ -520,7 +551,7 @@ while True:
                 trait_file = f"{values['-DEST-']}/{run_name}_traitmatch_output.csv"
 
             trait_main(
-                traitfile=values["-IN_CSV-"], speciesfile=values["-SPEC_FILE-"], outfile=trait_file
+                traitfile=values["-IN_CSV-"], speciesfile=values["-SPEC_FILE-"], outfile=trait_file, header = True
             )
 
             sg.popup(

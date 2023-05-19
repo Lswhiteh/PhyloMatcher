@@ -35,8 +35,9 @@ def main(traitfile, speciesfile, outfile, header):
         with open(traitfile, "r") as tfile:
             reader = csv.reader(tfile, delimiter=delim, quoting=csv.QUOTE_NONE)
             if header:
+                f_len -= 1
                 header = next(reader)
-                ofile.write(",".join(header))
+                ofile.write(",".join(header) + "\n")
 
             for line in tqdm(
                 reader,
@@ -45,6 +46,6 @@ def main(traitfile, speciesfile, outfile, header):
             ):
                 t_spec = line[0]
                 for s in spec_list:
-                    if t_spec in s:
+                    if t_spec in s[0]:
                         line[0] = s[0]
                 ofile.write(",".join(line) + "\n")
