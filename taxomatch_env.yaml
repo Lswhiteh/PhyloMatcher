@@ -7,6 +7,7 @@ dependencies:
   - _libgcc_mutex=0.1=conda_forge
   - _openmp_mutex=4.5=2_gnu
   - biopython=1.81=py311h2582759_0
+  - fuzzywuzzy
   - black=23.1.0=py311h38be061_0
   - bzip2=1.0.8=h7f98852_4
   - ca-certificates=2022.12.7=ha878542_0

@@ -2,20 +2,19 @@
 
 """
 A utility to match NCBI Taxonomy synonym names given a taxon name.
-
 Resources:
 - https://harryincupboard.blog/3
 - https://biopython.org/docs/1.76/api/Bio.Entrez.html
 - https://www.ncbi.nlm.nih.gov/books/NBK25497/
 - https://www.ncbi.nlm.nih.gov/books/NBK25500/
-
 Logan Whitehouse - lswhiteh@unc.edu
 """
-import argparse
-import multiprocessing as mp
+from concurrent.futures import ThreadPoolExecutor
+
 from tqdm import tqdm
 from pygbif import species
 import os
+
 
 def read_csv(csvfile):
     target_list = []
@@ -50,33 +49,38 @@ def worker(sp):
     if key:
         synonyms = get_synonyms(key)
         synonyms.insert(0, sp)
-        synonyms.append(curr_name)
+        synonyms = list(set(synonyms))
+        if synonyms.index(sp) != 0:
+            synonyms.pop(synonyms.index(sp))
+            synonyms.insert(0, sp)
     else:
         synonyms = [sp]
 
     return synonyms
 
+
 def main(input_csv, outfile, threads):
     sp_list = read_csv(input_csv)
     cleaned_sp_list = [i.replace("_", " ") for i in sp_list]
 
-    with mp.Pool(threads) as p:
+    with ThreadPoolExecutor(max_workers=threads) as executor:
         synonyms = list(
             tqdm(
-                p.imap(worker, cleaned_sp_list, chunksize=4),
+                executor.map(worker, cleaned_sp_list),
                 desc="[INFO] Fetching GBIF information",
                 total=len(cleaned_sp_list),
             )
         )
 
+    # Cleanup
+
     max_len = max([len(i) for i in synonyms])
-    eq_headers = (
-        ["Tree_Sp_Name"] + [f"Eq_{i}" for i in range(max_len - 1)] + ["Curr_Name"]
-    )
-    
-    os.makedirs(os.path.dirname(outfile), exist_ok=True)
+    eq_headers = ["Tree_Sp_Name"] + [f"Eq_{i}" for i in range(max_len - 1)]
+
+    if "/" in outfile:
+        os.makedirs(os.path.dirname(outfile), exist_ok=True)
 
     with open(outfile, "w") as ofile:
-        ofile.write("\t".join(eq_headers) + "\n")
+        ofile.write(",".join(eq_headers) + "\n")
         for names in synonyms:
-            ofile.write("\t".join([i.replace(" ", "_") for i in names]) + "\n")
+            ofile.write(",".join([i.replace(" ", "_") for i in names]) + "\n")

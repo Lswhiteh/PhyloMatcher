@@ -17,6 +17,7 @@ import os
 from tqdm import tqdm
 from Bio import Entrez
 
+
 def get_ua():
     ap = argparse.ArgumentParser()
     ap.add_argument("-e", "--email", dest="email", required=True)
@@ -160,9 +161,9 @@ def main(input_csv, outfile, user_email):
     eq_headers = ["Tree_Sp_Name"] + [f"Eq_{i}" for i in range(max_len - 1)]
 
     with open(outfile, "w") as ofile:
-        ofile.write("\t".join(eq_headers) + "\n")
+        ofile.write(",".join(eq_headers) + "\n")
         for names in name_res:
-            ofile.write("\t".join(names) + "\n")
+            ofile.write(",".join(names) + "\n")
 
     with open(f"{outfile.split('.')[0]}_fails.csv", "w") as failfile:
         for i in set(fail_list):
